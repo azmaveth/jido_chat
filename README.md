@@ -1,14 +1,14 @@
 # JidoChat
 
-JidoChat is a structured chat room system for Elixir that supports both human and AI agent participants, with customizable turn-taking strategies and flexible persistence options. It's designed for building scalable, real-time chat applications that can seamlessly integrate AI agents alongside human participants.
+JidoChat is a structured chat channel system for Elixir that supports both human and AI agent participants, with customizable turn-taking strategies and flexible persistence options. It's designed for building scalable, real-time chat applications that can seamlessly integrate AI agents alongside human participants.
 
 > ***BETA***: This is a beta release and the API is subject to change.
 
 ## Features
 
-- **Flexible Chat Rooms**: Create and manage multiple chat rooms with customizable settings
+- **Flexible Chat Channels**: Create and manage multiple chat channels with customizable settings
 - **Turn-Taking Strategies**: Built-in support for free-form and round-robin conversation patterns
-- **Multi-Participant Support**: Handle both human users and AI agents in the same room
+- **Multi-Participant Support**: Handle both human users and AI agents in the same channel
 - **Persistence Options**: Extensible persistence adapters, currently supports ETS and an in-memory adapter
 - **LLM Integration Ready**: Built-in conversation context formatting for popular LLM APIs
 - **Extensible Design**: Custom behaviors for turn-taking strategies and persistence
@@ -30,8 +30,8 @@ end
 ### Basic Setup
 
 ```elixir
-# Start a new chat room
-{:ok, room_pid} = JidoChat.create_room("room-123")
+# Start a new chat channel
+{:ok, channel_pid} = JidoChat.create_channel("channel-123")
 
 # Add participants
 human = %JidoChat.Participant{
@@ -46,19 +46,19 @@ agent = %JidoChat.Participant{
   type: :agent
 }
 
-:ok = JidoChat.join_room(room_pid, human)
-:ok = JidoChat.join_room(room_pid, agent)
+:ok = JidoChat.join_channel(channel_pid, human)
+:ok = JidoChat.join_channel(channel_pid, agent)
 
 # Post messages
-{:ok, message} = JidoChat.post_message(room_pid, "user1", "Hello, bot!")
+{:ok, message} = JidoChat.post_message(channel_pid, "user1", "Hello, bot!")
 ```
 
 ### Using Turn-Taking Strategies
 
 ```elixir
-# Create a room with round-robin strategy
-{:ok, room_pid} = JidoChat.create_room("room-456",
-  strategy: JidoChat.Room.Strategy.RoundRobin
+# Create a channel with round-robin strategy
+{:ok, channel_pid} = JidoChat.create_channel("channel-456",
+  strategy: JidoChat.Channel.Strategy.RoundRobin
 )
 ```
 
@@ -66,7 +66,7 @@ agent = %JidoChat.Participant{
 
 ```elixir
 # Get recent messages formatted for ChatML
-{:ok, conversation} = JidoChat.get_conversation_context(room_pid,
+{:ok, conversation} = JidoChat.get_conversation_context(channel_pid,
   message_limit: 10,
   format: :chat_ml
 )
@@ -78,28 +78,28 @@ Add to your `config.exs`:
 
 ```elixir
 config :jido_chat,
-  persistence: JidoChat.Room.Persistence.ETS,
+  persistence: JidoChat.Channel.Persistence.ETS,
   default_message_limit: 1000,
-  default_strategy: JidoChat.Room.Strategy.FreeForm
+  default_strategy: JidoChat.Channel.Strategy.FreeForm
 ```
 
 ## TODO
 
 ### Core Improvements
 - [ ] Implement proper supervision tree
-- [ ] Add dynamic supervision for rooms
+- [ ] Add dynamic supervision for channels
 - [ ] Implement graceful process restart handling
 - [ ] Add Phoenix PubSub integration
 - [ ] Support message attachments
 
 ### Features
-- [ ] Implement room discovery
+- [ ] Implement channel discovery
 - [ ] Add message threading
 - [ ] Support message reactions
 - [ ] Add presence tracking
-- [ ] Implement room archiving
+- [ ] Implement channel archiving
 - [ ] Add support for message attachments
-- [ ] Implement room moderation features
+- [ ] Implement channel moderation features
 
 ### Chat Plugins
 - [ ] Extend JidoChat to support Telegram
@@ -122,7 +122,7 @@ config :jido_chat,
 - [ ] Implement rate limiting
 - [ ] Add participant authentication
 - [ ] Add input sanitization
-- [ ] Implement room authorization rules
+- [ ] Implement channel authorization rules
 
 ## Contributing
 

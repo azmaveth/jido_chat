@@ -1,6 +1,6 @@
 defmodule JidoChat do
   @moduledoc """
-  JidoChat is a structured chat room system supporting human and agent participants
+  JidoChat is a structured chat channel system supporting human and agent participants
   with customizable turn-taking strategies and persistence.
 
   ## Features
@@ -12,59 +12,59 @@ defmodule JidoChat do
   - Conversation context extraction for LLMs
   """
 
-  alias JidoChat.{Room, Participant, Message, Conversation}
+  alias JidoChat.{Channel, Participant, Message, Conversation}
 
-  @type room_id :: String.t()
+  @type channel_id :: String.t()
   @type participant_id :: String.t()
   @type error :: {:error, term()}
 
   @doc """
-  Creates a new chat room with the specified options.
+  Creates a new chat channel with the specified options.
 
   ## Options
 
     * `:strategy` - The turn-taking strategy module (default: Strategy.FreeForm)
     * `:message_limit` - Maximum number of messages to retain (default: 1000)
     * `:persistence` - Persistence adapter to use (default: Persistence.ETS)
-    * `:name` - Room name (default: generated from room_id)
+    * `:name` - Channel name (default: generated from channel_id)
 
   ## Examples
 
-      iex> {:ok, pid} = JidoChat.create_room("room-123", strategy: JidoChat.Room.Strategy.RoundRobin)
+      iex> {:ok, pid} = JidoChat.create_channel("channel-123", strategy: JidoChat.Channel.Strategy.RoundRobin)
       {:ok, pid}
   """
-  @spec create_room(room_id(), keyword()) :: {:ok, pid()} | error()
-  def create_room(room_id, opts \\ []) do
-    Room.start_link(room_id, opts)
+  @spec create_channel(channel_id(), keyword()) :: {:ok, pid()} | error()
+  def create_channel(channel_id, opts \\ []) do
+    Channel.start_link(channel_id, opts)
   end
 
   @doc """
-  Adds a participant to a room.
+  Adds a participant to a channel.
 
   ## Examples
 
-      iex> {:ok, room_pid} = JidoChat.create_room("room-123")
+      iex> {:ok, channel_pid} = JidoChat.create_channel("channel-123")
       iex> participant = %JidoChat.Participant{id: "user1", name: "Alice", type: :human}
-      iex> JidoChat.join_room(room_pid, participant)
+      iex> JidoChat.join_channel(channel_pid, participant)
       :ok
   """
-  @spec join_room(pid(), Participant.t()) :: :ok | error()
-  def join_room(room_pid, participant) do
-    Room.join(room_pid, participant)
+  @spec join_channel(pid(), Participant.t()) :: :ok | error()
+  def join_channel(channel_pid, participant) do
+    Channel.join(channel_pid, participant)
   end
 
   @doc """
-  Posts a message to a room.
+  Posts a message to a channel.
 
   ## Examples
 
-    iex> {:ok, room_pid} = JidoChat.create_room("room-123")
-    iex> JidoChat.post_message(room_pid, "user1", "Hello!")
+    iex> {:ok, channel_pid} = JidoChat.create_channel("channel-123")
+    iex> JidoChat.post_message(channel_pid, "user1", "Hello!")
     {:ok, %JidoChat.Message{}}
   """
   @spec post_message(pid(), participant_id(), String.t()) :: {:ok, Message.t()} | error()
-  def post_message(room_pid, participant_id, content) do
-    Room.post_message(room_pid, participant_id, content)
+  def post_message(channel_pid, participant_id, content) do
+    Channel.post_message(channel_pid, participant_id, content)
   end
 
   @doc """
@@ -78,14 +78,14 @@ defmodule JidoChat do
 
   ## Examples
 
-    iex> {:ok, room_pid} = JidoChat.create_room("room-123")
-    iex> JidoChat.get_conversation_context(room_pid, limit: 5)
+    iex> {:ok, channel_pid} = JidoChat.create_channel("channel-123")
+    iex> JidoChat.get_conversation_context(channel_pid, limit: 5)
     {:ok, %JidoChat.Conversation{}}
   """
   @spec get_conversation_context(pid(), keyword()) :: {:ok, Conversation.t()} | error()
-  def get_conversation_context(room_pid, opts \\ []) do
-    with {:ok, messages} <- Room.get_messages(room_pid),
-         {:ok, participants} <- Room.get_participants(room_pid) do
+  def get_conversation_context(channel_pid, opts \\ []) do
+    with {:ok, messages} <- Channel.get_messages(channel_pid),
+         {:ok, participants} <- Channel.get_participants(channel_pid) do
       Conversation.from_messages(messages, participants, opts)
     end
   end

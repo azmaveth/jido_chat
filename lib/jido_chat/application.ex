@@ -1,19 +1,26 @@
 defmodule JidoChat.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
-
   use Application
+  require Logger
 
   @impl true
   def start(_type, _args) do
-    children = [
-      # Starts the JidoChat persistence
-      JidoChat.Room.Persistence.Memory
-    ]
+    children =
+      [
+        # Start the Channel Registry
+        {Registry, name: JidoChat.ChannelRegistry, keys: :unique},
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
+        # Start the Persistence layer
+        JidoChat.Channel.Persistence.Memory,
+
+        # Start our PubSub
+        {Phoenix.PubSub, name: JidoChat.PubSub},
+
+        # Start the MessageBroker
+        {JidoChat.PubSub.MessageBroker, [channel_id: "global"]}
+      ]
+      |> Enum.reject(&is_nil/1)
+
     opts = [strategy: :one_for_one, name: JidoChat.Supervisor]
     Supervisor.start_link(children, opts)
   end

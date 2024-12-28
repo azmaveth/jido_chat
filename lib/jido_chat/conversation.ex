@@ -2,6 +2,7 @@ defmodule JidoChat.Conversation do
   @moduledoc """
   Represents a conversation context suitable for LLM processing.
   """
+  alias JidoChat.Participant
 
   @type t :: %__MODULE__{
           messages: [formatted_message()],
@@ -19,7 +20,7 @@ defmodule JidoChat.Conversation do
   defstruct [:messages, :participants, metadata: %{}]
 
   @doc """
-  Creates a conversation context from room messages and participants.
+  Creates a conversation context from channel messages and participants.
 
   ## Options
 

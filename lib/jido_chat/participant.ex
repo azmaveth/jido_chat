@@ -1,6 +1,6 @@
 defmodule JidoChat.Participant do
   @moduledoc """
-  Represents a participant in a chat room.
+  Represents a participant in a chat channel.
   """
 
   @type participant_type :: :human | :agent
