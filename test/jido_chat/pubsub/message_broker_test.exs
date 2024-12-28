@@ -6,6 +6,8 @@ defmodule JidoChat.PubSub.MessageBrokerTest do
   alias JidoChat.{Message, Participant}
   alias Phoenix.PubSub
 
+  @moduletag :capture_log
+
   setup do
     # Start Phoenix.PubSub for each test
     # start_supervised!({Phoenix.PubSub, name: JidoChat.PubSub})

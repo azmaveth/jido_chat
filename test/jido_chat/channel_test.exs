@@ -3,7 +3,7 @@ defmodule JidoChat.ChannelTest do
   alias JidoChat.Channel
   alias JidoChat.Channel.{Strategy, Persistence}
   alias JidoChat.{Message, Participant}
-
+  @moduletag :capture_log
   setup do
     # Set the log level to debug for this test module
     Logger.configure(level: :debug)

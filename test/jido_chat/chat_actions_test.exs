@@ -1,7 +1,7 @@
 defmodule JidoChat.Actions.ChatTest do
   use ExUnit.Case, async: true
   alias JidoChat.Actions.Chat.{Evaluate, Think, Respond, EchoResponse}
-
+  @moduletag :capture_log
   describe "Evaluate" do
     test "evaluates a message" do
       message = "test message"

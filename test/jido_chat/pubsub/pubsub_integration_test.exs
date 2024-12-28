@@ -6,7 +6,7 @@ defmodule JidoChat.Channel.PubSubIntegrationTest do
   alias JidoChat.Channel.Strategy
   alias JidoChat.{Message, Participant}
   alias Phoenix.PubSub
-
+  @moduletag :capture_log
   setup do
     # Start ETS table for persistence
     :ets.new(:jido_channels, [:set, :public, :named_table, :named_table])

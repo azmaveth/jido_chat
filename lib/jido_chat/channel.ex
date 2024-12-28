@@ -2,12 +2,51 @@ defmodule JidoChat.Channel do
   @moduledoc """
   Manages chat channel state and behavior using GenServer.
 
-  Provides functionality for:
-  - Message posting and history
-  - Participant management
-  - Turn-taking strategies
-  - Message persistence
-  - PubSub message broadcasting
+  This module implements the core chat channel functionality, managing message history,
+  participants, turn-taking, and message persistence. It uses a GenServer process to
+  maintain channel state and coordinate communication between participants.
+
+  ## Features
+
+  - Message posting and history management with configurable limits
+  - Participant join/leave management
+  - Pluggable turn-taking strategies
+  - Configurable message persistence
+  - PubSub-based message broadcasting
+  - Participant presence tracking
+
+  ## State Management
+
+  Channel state is maintained in a struct containing:
+  - Channel ID and name
+  - List of participants
+  - Message history with configurable limit
+  - Current turn and turn-taking strategy
+  - Message broker PID for PubSub
+  - Persistence adapter configuration
+  - Custom metadata
+
+  ## Usage
+
+      # Create a new channel
+      {:ok, pid} = Channel.start_link("channel-123", strategy: Strategy.RoundRobin)
+
+      # Add a participant
+      :ok = Channel.join(pid, participant)
+
+      # Post a message
+      {:ok, message} = Channel.post_message(pid, "user-123", "Hello!")
+
+      # Get message history
+      {:ok, messages} = Channel.get_messages(pid, order: :chronological)
+
+  ## Configuration
+
+  The channel can be configured with:
+  - Turn-taking strategy module
+  - Message history limit
+  - Persistence adapter
+  - Custom metadata
   """
 
   use GenServer
@@ -27,7 +66,12 @@ defmodule JidoChat.Channel do
           persistence_adapter: module(),
           message_broker: pid()
         }
-
+  @type channel_error ::
+          :invalid_participant
+          | :not_participants_turn
+          | :message_too_large
+          | :channel_full
+  @enforce_keys [:id, :name]
   defstruct [
     :id,
     :name,
@@ -43,6 +87,18 @@ defmodule JidoChat.Channel do
 
   @doc """
   Returns child specification for supervision tree.
+
+  ## Options
+
+  - `:name` - Required channel ID for registration
+  - All other options are passed to `start_link/2`
+
+  ## Returns
+
+  Standard child specification map with:
+  - Unique ID based on channel ID
+  - Permanent restart strategy
+  - 500ms shutdown timeout
   """
   @spec child_spec(keyword()) :: Supervisor.child_spec()
   def child_spec(opts) do
@@ -61,6 +117,17 @@ defmodule JidoChat.Channel do
 
   @doc """
   Starts a new channel process linked to the current process.
+
+  ## Options
+
+  - `:strategy` - Turn-taking strategy module (default: Strategy.PubSubRoundRobin)
+  - `:message_limit` - Max messages to retain (default: 1000)
+  - `:persistence_adapter` - Storage adapter module (default: Persistence.ETS)
+
+  ## Returns
+
+  - `{:ok, pid}` on success
+  - `{:error, reason}` on failure
   """
   @spec start_link(String.t(), keyword()) :: GenServer.on_start()
   def start_link(channel_id, opts \\ []) do
@@ -69,15 +136,43 @@ defmodule JidoChat.Channel do
 
   @doc """
   Posts a message to the channel from a participant.
+
+  Validates that:
+  - Participant exists in channel
+  - It is participant's turn (if turn-taking enabled)
+  - Message content is valid
+
+  ## Parameters
+
+  - `channel` - Channel PID or ID
+  - `participant_id` - ID of participant sending message
+  - `content` - Message content string
+
+  ## Returns
+
+  - `{:ok, message}` on success
+  - `{:error, reason}` if validation fails
   """
   @spec post_message(pid() | String.t(), String.t(), String.t()) ::
-          {:ok, Message.t()} | {:error, atom()}
+          {:ok, Message.t()} | {:error, channel_error()}
   def post_message(channel, participant_id, content) do
     GenServer.call(get_channel_ref(channel), {:post_message, participant_id, content})
   end
 
   @doc """
   Adds a participant to the channel.
+
+  Registers the participant with the message broker and adds them to channel state.
+
+  ## Parameters
+
+  - `channel` - Channel PID or ID
+  - `participant` - Participant struct to add
+
+  ## Returns
+
+  - `:ok` on successful join
+  - `{:ok, :already_joined}` if already a member
   """
   @spec join(pid() | String.t(), JidoChat.Participant.t()) :: :ok | {:ok, :already_joined}
   def join(channel, participant) do
@@ -86,6 +181,17 @@ defmodule JidoChat.Channel do
 
   @doc """
   Removes a participant from the channel.
+
+  Unregisters from message broker and removes from channel state.
+
+  ## Parameters
+
+  - `channel` - Channel PID or ID
+  - `participant_id` - ID of participant to remove
+
+  ## Returns
+
+  - `:ok` on successful removal
   """
   @spec leave(pid() | String.t(), String.t()) :: :ok
   def leave(channel, participant_id) do
@@ -94,6 +200,15 @@ defmodule JidoChat.Channel do
 
   @doc """
   Gets channel messages with optional ordering.
+
+  ## Options
+
+  - `:order` - `:chronological` (oldest first) or `:reverse_chronological` (newest first)
+    Default: `:chronological`
+
+  ## Returns
+
+  - `{:ok, messages}` List of message structs in requested order
   """
   @spec get_messages(pid() | String.t(), keyword()) :: {:ok, [Message.t()]}
   def get_messages(channel, opts \\ []) do
@@ -103,13 +218,34 @@ defmodule JidoChat.Channel do
 
   @doc """
   Gets list of channel participants.
+
+  ## Parameters
+
+  - `channel` - Channel PID or ID
+  - `type` - Optional participant type filter (:all, :human, or :agent). Defaults to :all
+
+  ## Returns
+
+  - `{:ok, participants}` List of participant structs filtered by type if specified
   """
-  @spec get_participants(pid() | String.t()) :: {:ok, [JidoChat.Participant.t()]}
-  def get_participants(channel) do
-    GenServer.call(get_channel_ref(channel), :get_participants)
+  @spec get_participants(pid() | String.t(), :all | :human | :agent) ::
+          {:ok, [JidoChat.Participant.t()]}
+  def get_participants(channel, type \\ :all) do
+    GenServer.call(get_channel_ref(channel), {:get_participants, type})
   end
 
-  # Private helper to handle channel reference
+  # Private Functions
+
+  # Converts a channel reference (PID or ID) to appropriate process reference
+  #
+  # ## Parameters
+  #
+  # - `channel` - Channel PID, string ID, or atom ID
+  #
+  # ## Returns
+  #
+  # - PID if input is PID
+  # - Via tuple for Registry if input is string/atom ID
   @spec get_channel_ref(pid() | String.t() | atom()) ::
           pid() | {:via, Registry, {atom(), String.t()}}
   defp get_channel_ref(channel) when is_binary(channel) or is_atom(channel),
@@ -125,18 +261,18 @@ defmodule JidoChat.Channel do
     message_limit = Keyword.get(opts, :message_limit, 1000)
 
     # Start the message broker for this channel
-    {:ok, broker_pid} =
-      PubSub.MessageBroker.start_link(
-        channel_id: channel_id,
-        strategy: strategy
-      )
+    case PubSub.MessageBroker.start_link(
+           channel_id: channel_id,
+           strategy: strategy
+         ) do
+      {:ok, broker_pid} ->
+        # Subscribe to the channel's topic
+        channel_topic = "channel:#{channel_id}"
+        :ok = PhoenixPubSub.subscribe(JidoChat.PubSub, channel_topic)
 
-    # Subscribe to the channel's topic
-    channel_topic = "channel:#{channel_id}"
-    :ok = PhoenixPubSub.subscribe(JidoChat.PubSub, channel_topic)
+        # Load or create channel state
+        {:ok, channel} = JidoChat.Channel.Persistence.load_or_create(channel_id)
 
-    case JidoChat.Channel.Persistence.load_or_create(channel_id) do
-      {:ok, channel} ->
         channel = %{
           channel
           | turn_strategy: strategy,
@@ -148,7 +284,10 @@ defmodule JidoChat.Channel do
         {:ok, channel}
 
       {:error, reason} ->
-        Logger.warning("Failed to initialize channel #{channel_id}: #{inspect(reason)}")
+        Logger.warning(
+          "Failed to start message broker for channel #{channel_id}: #{inspect(reason)}"
+        )
+
         {:stop, reason}
     end
   end
@@ -236,8 +375,17 @@ defmodule JidoChat.Channel do
   end
 
   @impl true
-  def handle_call(:get_participants, _from, channel) do
-    {:reply, {:ok, channel.participants}, channel}
+  def handle_call({:get_participants, type}, _from, channel) do
+    participants =
+      case type do
+        :all ->
+          channel.participants
+
+        type when type in [:human, :agent] ->
+          Enum.filter(channel.participants, &(&1.type == type))
+      end
+
+    {:reply, {:ok, participants}, channel}
   end
 
   @impl true
@@ -252,16 +400,46 @@ defmodule JidoChat.Channel do
 
   # Private Functions
 
+  # Generates a participant-specific topic string for PubSub
+  #
+  # ## Parameters
+  #
+  # - `channel_id` - Channel identifier
+  # - `participant_id` - Participant identifier
+  #
+  # ## Returns
+  #
+  # Topic string in format "channel:{channel_id}:participant:{participant_id}"
   @spec participant_topic(String.t(), String.t()) :: String.t()
   defp participant_topic(channel_id, participant_id) do
     "channel:#{channel_id}:participant:#{participant_id}"
   end
 
+  # Checks if a participant exists in the channel
+  #
+  # ## Parameters
+  #
+  # - `channel` - Channel struct
+  # - `participant_id` - ID to check
+  #
+  # ## Returns
+  #
+  # Boolean indicating if participant exists
   @spec has_participant?(t(), String.t()) :: boolean()
   defp has_participant?(channel, participant_id) do
     Enum.any?(channel.participants, &(&1.id == participant_id))
   end
 
+  # Creates a new message struct for the given participant and content
+  #
+  # ## Parameters
+  #
+  # - `participant_id` - ID of message sender
+  # - `content` - Message content string
+  #
+  # ## Returns
+  #
+  # New Message struct or raises on validation failure
   @spec create_message(String.t(), String.t()) :: Message.t()
   defp create_message(participant_id, content) do
     case Message.create(content, participant_id) do
@@ -270,6 +448,16 @@ defmodule JidoChat.Channel do
     end
   end
 
+  # Adds a message to the channel's message history, respecting message limit
+  #
+  # ## Parameters
+  #
+  # - `channel` - Channel struct
+  # - `message` - Message to add
+  #
+  # ## Returns
+  #
+  # Updated channel struct with message added and possibly older messages pruned
   defp add_message_to_channel(channel, message) do
     messages = [message | channel.messages]
 
@@ -292,6 +480,15 @@ defmodule JidoChat.Channel do
     %{channel | messages: limited_messages}
   end
 
+  # Creates a via tuple for Registry registration
+  #
+  # ## Parameters
+  #
+  # - `channel_id` - Channel identifier
+  #
+  # ## Returns
+  #
+  # Via tuple for Registry registration
   @spec via_tuple(String.t()) :: {:via, Registry, {atom(), String.t()}}
   defp via_tuple(channel_id) do
     {:via, Registry, {JidoChat.ChannelRegistry, channel_id}}
