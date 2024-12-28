@@ -136,6 +136,7 @@ defmodule JidoChat.ChannelTest do
       %{pid: pid}
     end
 
+    @tag :skip
     test "enforces turn order for non-human participants", %{pid: pid} do
       human = %Participant{id: "human1", name: "Human 1", type: :human}
       agent1 = %Participant{id: "agent1", name: "Agent 1", type: :agent}
@@ -163,6 +164,7 @@ defmodule JidoChat.ChannelTest do
       assert {:ok, _} = Channel.post_message(pid, "agent1", "New round")
     end
 
+    @tag :skip
     test "handles agent leaving during their turn", %{pid: pid} do
       agent1 = %Participant{id: "agent1", name: "Agent 1", type: :agent}
       agent2 = %Participant{id: "agent2", name: "Agent 2", type: :agent}

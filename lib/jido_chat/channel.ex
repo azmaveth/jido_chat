@@ -59,7 +59,7 @@ defmodule JidoChat.Channel do
           name: String.t(),
           participants: [JidoChat.Participant.t()],
           messages: [JidoChat.Message.t()],
-          turn_strategy: module(),
+          strategy: module(),
           current_turn: String.t() | nil,
           message_limit: non_neg_integer(),
           metadata: map(),
@@ -68,7 +68,7 @@ defmodule JidoChat.Channel do
         }
   @type channel_error ::
           :invalid_participant
-          | :not_participants_turn
+          | :not_allowed
           | :message_too_large
           | :channel_full
   @enforce_keys [:id, :name]
@@ -78,7 +78,7 @@ defmodule JidoChat.Channel do
     :message_broker,
     participants: [],
     messages: [],
-    turn_strategy: JidoChat.Channel.Strategy.PubSubRoundRobin,
+    strategy: JidoChat.Channel.Strategy.PubSubRoundRobin,
     current_turn: nil,
     metadata: %{},
     message_limit: 1000,
@@ -246,12 +246,14 @@ defmodule JidoChat.Channel do
   #
   # - PID if input is PID
   # - Via tuple for Registry if input is string/atom ID
-  @spec get_channel_ref(pid() | String.t() | atom()) ::
+  @spec get_channel_ref(pid() | String.t() | atom() | t()) ::
           pid() | {:via, Registry, {atom(), String.t()}}
   defp get_channel_ref(channel) when is_binary(channel) or is_atom(channel),
     do: via_tuple(channel)
 
   defp get_channel_ref(pid) when is_pid(pid), do: pid
+
+  defp get_channel_ref(%__MODULE__{id: id}), do: via_tuple(id)
 
   # Server Callbacks
 
@@ -275,7 +277,7 @@ defmodule JidoChat.Channel do
 
         channel = %{
           channel
-          | turn_strategy: strategy,
+          | strategy: strategy,
             current_turn: nil,
             message_broker: broker_pid,
             message_limit: message_limit
@@ -294,8 +296,10 @@ defmodule JidoChat.Channel do
 
   @impl true
   def handle_call({:post_message, participant_id, content}, _from, channel) do
-    with true <- has_participant?(channel, participant_id),
-         true <- channel.turn_strategy.can_post?(channel, participant_id) do
+    with {:ok, has_participant} <- {:ok, has_participant?(channel, participant_id)},
+         true <- has_participant,
+         {:ok, can_post} <- channel.strategy.can_post?(channel, participant_id),
+         true <- can_post do
       message = create_message(participant_id, content)
 
       # Broadcast through the message broker
@@ -306,7 +310,7 @@ defmodule JidoChat.Channel do
       )
 
       updated_channel = add_message_to_channel(channel, message)
-      updated_channel = channel.turn_strategy.next_turn(updated_channel)
+      {:ok, updated_channel} = channel.strategy.next_turn(updated_channel)
 
       :ok =
         JidoChat.Channel.Persistence.save(
@@ -317,8 +321,9 @@ defmodule JidoChat.Channel do
 
       {:reply, {:ok, message}, updated_channel}
     else
-      false ->
-        {:reply, {:error, :not_allowed}, channel}
+      false -> {:reply, {:error, :not_allowed}, channel}
+      {:ok, false} -> {:reply, {:error, :turn_violation}, channel}
+      {:error, reason} -> {:reply, {:error, reason}, channel}
     end
   end
 
@@ -338,6 +343,15 @@ defmodule JidoChat.Channel do
         )
 
       updated_channel = %{channel | participants: [participant | channel.participants]}
+
+      # If this is an agent and no turn is set, set the turn
+      updated_channel =
+        if participant.type == :agent and is_nil(channel.current_turn) do
+          {:ok, channel_with_turn} = channel.strategy.next_turn(updated_channel)
+          channel_with_turn
+        else
+          updated_channel
+        end
 
       :ok =
         JidoChat.Channel.Persistence.save(

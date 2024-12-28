@@ -45,7 +45,50 @@ defmodule JidoChat.Channel.Strategy.PubSubRoundRobin do
   @impl true
   @spec can_post?(JidoChat.Channel.t(), String.t()) ::
           {:ok, boolean()} | {:error, JidoChat.Channel.Strategy.strategy_error()}
-  def can_post?(_channel, _participant_id), do: {:ok, true}
+  def can_post?(channel, participant_id) do
+    case Enum.find(channel.participants, &(&1.id == participant_id)) do
+      nil ->
+        {:error, :invalid_participant}
+
+      %{type: :human} ->
+        {:ok, true}
+
+      %{type: :agent} = agent ->
+        agents = get_agent_participants(channel)
+
+        cond do
+          # No agents, allow posting
+          Enum.empty?(agents) ->
+            {:ok, true}
+
+          # No turn set, only first agent can post
+          is_nil(channel.current_turn) ->
+            first_agent = List.first(agents)
+            {:ok, first_agent.id == agent.id}
+
+          # Current turn can post
+          channel.current_turn == agent.id ->
+            {:ok, true}
+
+          # Next agent in sequence can post if current turn has posted
+          true ->
+            current_index = get_current_index(agents, channel.current_turn)
+            next_index = rem(current_index + 1, length(agents))
+            next_agent = Enum.at(agents, next_index)
+
+            # Only allow next agent if current turn has posted
+            {:ok, agent.id == next_agent.id && has_current_turn_posted?(channel)}
+        end
+    end
+  end
+
+  # Helper to check if current turn has posted
+  defp has_current_turn_posted?(channel) do
+    case channel.messages do
+      [] -> false
+      [last_message | _] -> last_message.participant_id == channel.current_turn
+    end
+  end
 
   @doc """
   Advances the turn to the next agent participant.

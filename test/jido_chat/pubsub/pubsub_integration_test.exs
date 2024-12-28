@@ -104,6 +104,53 @@ defmodule JidoChat.Channel.PubSubIntegrationTest do
       assert length(messages) == 2
       assert Enum.map(messages, & &1.content) == ["Before leaving", "After agent1 left"]
     end
+
+    test "handles multiple agent joins and leaves", %{pid: pid} do
+      agent1 = %Participant{id: "agent1", name: "Agent 1", type: :agent}
+      agent2 = %Participant{id: "agent2", name: "Agent 2", type: :agent}
+      agent3 = %Participant{id: "agent3", name: "Agent 3", type: :agent}
+
+      # Join initial agents
+      :ok = Channel.join(pid, agent1)
+      :ok = Channel.join(pid, agent2)
+
+      {:ok, msg1} = Channel.post_message(pid, "agent1", "First message")
+      send(:message_collector, {:message, msg1})
+
+      # Add third agent mid-conversation
+      :ok = Channel.join(pid, agent3)
+
+      {:ok, msg2} = Channel.post_message(pid, "agent2", "Second message")
+      {:ok, msg3} = Channel.post_message(pid, "agent3", "Third message")
+      Enum.each([msg2, msg3], &send(:message_collector, {:message, &1}))
+
+      # Remove middle agent
+      :ok = Channel.leave(pid, "agent2")
+
+      {:ok, msg4} = Channel.post_message(pid, "agent1", "After agent2 left")
+      send(:message_collector, {:message, msg4})
+
+      messages = get_collected_messages()
+      assert length(messages) == 4
+      assert Enum.map(messages, & &1.participant_id) == ["agent1", "agent2", "agent3", "agent1"]
+    end
+
+    test "handles invalid message attempts", %{pid: pid} do
+      agent1 = %Participant{id: "agent1", name: "Agent 1", type: :agent}
+      agent2 = %Participant{id: "agent2", name: "Agent 2", type: :agent}
+
+      :ok = Channel.join(pid, agent1)
+      :ok = Channel.join(pid, agent2)
+
+      # Try posting out of turn
+      {:error, _} = Channel.post_message(pid, "agent2", "Out of turn")
+
+      # Try posting with non-existent participant
+      {:error, _} = Channel.post_message(pid, "fake_id", "Should fail")
+
+      messages = get_collected_messages()
+      assert Enum.empty?(messages)
+    end
   end
 
   # Message collector process with parent process reference

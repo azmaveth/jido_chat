@@ -45,30 +45,35 @@ defmodule JidoChat.Channel.Strategy.RoundRobin do
   @spec can_post?(JidoChat.Channel.t(), String.t()) ::
           {:ok, boolean()} | {:error, JidoChat.Channel.Strategy.strategy_error()}
   def can_post?(channel, participant_id) do
-    case Enum.find(channel.participants, &(&1.id == participant_id)) do
-      nil ->
-        {:error, :invalid_participant}
-
-      participant ->
-        result =
-          cond do
-            participant.type == :human ->
-              true
-
-            is_nil(channel.current_turn) ->
-              with {:ok, agents} <- JidoChat.Channel.get_participants(channel, :agent),
-                   first_agent when not is_nil(first_agent) <- List.first(agents) do
-                first_agent.id == participant_id
-              else
-                _ -> false
-              end
-
-            true ->
-              channel.current_turn == participant_id
-          end
-
-        {:ok, result}
+    case find_participant(channel, participant_id) do
+      nil -> {:error, :invalid_participant}
+      participant -> {:ok, can_participant_post?(channel, participant)}
     end
+  end
+
+  defp find_participant(channel, participant_id) do
+    Enum.find(channel.participants, &(&1.id == participant_id))
+  end
+
+  defp can_participant_post?(channel, participant) do
+    case participant.type do
+      :human -> true
+      :agent -> can_agent_post?(channel, participant)
+    end
+  end
+
+  defp can_agent_post?(channel, agent) do
+    if is_nil(channel.current_turn) do
+      is_first_agent?(channel, agent)
+    else
+      channel.current_turn == agent.id
+    end
+  end
+
+  defp is_first_agent?(channel, agent) do
+    agents = Enum.filter(channel.participants, &(&1.type == :agent))
+    first_agent = List.first(agents)
+    if first_agent, do: first_agent.id == agent.id, else: false
   end
 
   @doc """
@@ -86,13 +91,16 @@ defmodule JidoChat.Channel.Strategy.RoundRobin do
   @impl true
   @spec next_turn(JidoChat.Channel.t()) ::
           {:ok, JidoChat.Channel.t()} | {:error, JidoChat.Channel.Strategy.strategy_error()}
-  def next_turn(%JidoChat.Channel{id: channel_id} = channel)
-      when is_binary(channel_id) or is_pid(channel_id) do
-    {:ok, agents} = JidoChat.Channel.get_participants(channel_id, :agent)
+  def next_turn(%JidoChat.Channel{} = channel) do
+    agents = Enum.filter(channel.participants, &(&1.type == :agent))
 
     case agents do
       [] ->
         {:ok, %JidoChat.Channel{channel | current_turn: nil}}
+
+      [_single_agent] ->
+        # If there's only one agent, they always get the turn
+        {:ok, %JidoChat.Channel{channel | current_turn: List.first(agents).id}}
 
       agents ->
         current_index = get_current_index(agents, channel.current_turn)
@@ -118,6 +126,58 @@ defmodule JidoChat.Channel.Strategy.RoundRobin do
 
       id ->
         Enum.find_index(agents, &(&1.id == id)) || -1
+    end
+  end
+
+  @doc """
+  Selects the next participant based on the previous message and available participants.
+
+  This function implements the core turn selection logic:
+  - Filters and sorts available agents
+  - Determines the previous participant's position
+  - Calculates the next participant in sequence
+  - Handles edge cases like no agents or single agent
+
+  ## Parameters
+    * `participants` - Map of participant structs
+    * `message` - Previous message struct containing participant_id
+
+  ## Returns
+    * `{:ok, participant_id}` - ID of the next participant
+    * `{:error, :no_agents_available}` - When no agents are available
+  """
+  @spec next_participant(%{String.t() => JidoChat.Participant.t()}, JidoChat.Message.t()) ::
+          {:ok, String.t()} | {:error, :no_agents_available}
+  def next_participant(participants, message) do
+    agents =
+      Map.values(participants)
+      |> Enum.filter(&(&1.type == :agent))
+      |> Enum.sort_by(& &1.id)
+
+    case agents do
+      [] ->
+        {:error, :no_agents_available}
+
+      [agent] ->
+        {:ok, agent.id}
+
+      agents ->
+        # Find the index of the last sender if it's an agent
+        last_sender_index =
+          case message.participant_id do
+            nil -> -1
+            id -> Enum.find_index(agents, &(&1.id == id))
+          end
+
+        next_index =
+          case last_sender_index do
+            nil -> 0
+            -1 -> 0
+            idx -> rem(idx + 1, length(agents))
+          end
+
+        next_agent = Enum.at(agents, next_index)
+        {:ok, next_agent.id}
     end
   end
 end

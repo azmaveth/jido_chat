@@ -292,8 +292,17 @@ defmodule JidoChat.PubSub.MessageBroker do
   @impl true
   @spec handle_info({:message, Message.t()}, State.t()) :: {:noreply, State.t()}
   def handle_info({:message, message}, state) do
+    # Rebroadcast to channel topic
     channel_topic = "channel:#{state.channel_id}"
-    PubSub.broadcast(JidoChat.PubSub, channel_topic, {:message, message})
+    :ok = PubSub.broadcast(JidoChat.PubSub, channel_topic, {:message, message})
+
+    # If message is from an agent, handle turn notification
+    participant = Map.get(state.participants, message.participant_id, %{type: nil})
+
+    if participant.type == :agent do
+      handle_agent_turn(message, state)
+    end
+
     {:noreply, state}
   end
 end
