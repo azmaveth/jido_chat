@@ -1,12 +1,16 @@
 # JidoChat
 
 [![Hex.pm](https://img.shields.io/hexpm/v/jido_chat.svg)](https://hex.pm/packages/jido_chat)
-[![Docs](https://img.shields.io/badge/hex-docs-green.svg)](https://hexdocs.pm/jido_chat)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-green.svg)](https://hexdocs.pm/jido_chat)
+[![Mix Test](https://github.com/agentjido/jido_chat/actions/workflows/elixir-ci.yml/badge.svg)](https://github.com/agentjido/jido_chat/actions/workflows/elixir-ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/agentjido/jido_chat/badge.svg?branch=main)](https://coveralls.io/github/agentjido/jido_chat?branch=main)
+[![Apache 2 License](https://img.shields.io/hexpm/l/jido_chat)](https://opensource.org/licenses/Apache-2.0)
 
 JidoChat is a structured chat channel system for Elixir that supports both human and AI agent participants, with customizable turn-taking strategies and flexible persistence options. Built on OTP principles, it provides a robust foundation for real-time chat applications that seamlessly integrate AI agents alongside human participants.
 
-> **BETA**: This is a beta release and the API may change in future versions.
+> **NOTE**: This package is aimed at facilitating small-scale chat scenarios between humans and AI agents. It is not designed for large-scale chat applications. 
+
+> **BETA**: JidoChat is currently in beta. The API may change in future versions.
 
 ## Key Features
 

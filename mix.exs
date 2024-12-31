@@ -1,7 +1,7 @@
 defmodule JidoChat.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.5.0"
 
   def project do
     [
@@ -23,9 +23,11 @@ defmodule JidoChat.MixProject do
       docs: docs(),
 
       # Coverage
-      test_coverage: [tool: ExCoveralls],
+      test_coverage: [tool: ExCoveralls, export: "cov"],
       preferred_cli_env: [
         coveralls: :test,
+        "coveralls.github": :test,
+        "coveralls.lcov": :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test,
