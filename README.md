@@ -1,4 +1,4 @@
-# JidoChat
+# Jido.Chat
 
 [![Hex.pm](https://img.shields.io/hexpm/v/jido_chat.svg)](https://hex.pm/packages/jido_chat)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-green.svg)](https://hexdocs.pm/jido_chat)
@@ -6,35 +6,33 @@
 [![Coverage Status](https://coveralls.io/repos/github/agentjido/jido_chat/badge.svg?branch=main)](https://coveralls.io/github/agentjido/jido_chat?branch=main)
 [![Apache 2 License](https://img.shields.io/hexpm/l/jido_chat)](https://opensource.org/licenses/Apache-2.0)
 
-JidoChat is a structured chat channel system for Elixir that supports both human and AI agent participants, with customizable turn-taking strategies and flexible persistence options. Built on OTP principles, it provides a robust foundation for real-time chat applications that seamlessly integrate AI agents alongside human participants.
-
-> **NOTE**: This package is aimed at facilitating small-scale chat scenarios between humans and AI agents. It is not designed for large-scale chat applications. 
-
-> **BETA**: JidoChat is currently in beta. The API may change in future versions.
+`Jido.Chat` is a structured chat room system built in Elixir that enables seamless interaction between human users and AI agents. Built on OTP principles, it provides a robust foundation for real-time chat applications with intelligent participants.
 
 ## Key Features
 
-- **Flexible Chat Channels**: Create and manage isolated chat rooms with customizable settings
-- **Smart Turn Management**: Built-in support for various conversation patterns:
-  - Free-form discussions
-  - Round-robin turn taking
-  - Custom turn-taking strategies
-- **Multi-Participant Support**: 
-  - Human and AI agent participants in the same channel
-  - Role-based message handling
-  - Extensible participant metadata
-- **Persistence Options**: 
-  - ETS-based storage (default)
-  - In-memory storage for testing
-  - Extensible persistence adapter system
-- **LLM Integration**: 
-  - Built-in conversation context formatting
-  - Support for major LLM APIs (ChatML, Anthropic)
-  - Customizable message formatting
-- **Real-time Communication**:
-  - PubSub-based message delivery
-  - Event-driven architecture
-  - Topic-based subscriptions
+### Room Management
+
+- **Flexible Room Creation**: Create isolated chat rooms with custom configurations
+- **Dynamic Supervision**: OTP-based room lifecycle management
+- **Thread Support**: Built-in conversation threading capabilities
+
+### Participant Management
+
+- **Multi-Type Support**: Handle both human and AI agent participants
+- **Role-Based Access**: Define participant roles and permissions
+- **Real-Time Status**: Track participant presence and activity
+
+### Message Handling
+
+- **Rich Message Types**: Support for text, system, and rich content messages
+- **@mentions**: Built-in mention parsing and handling
+- **Thread Management**: Organize conversations with threading
+
+### Integration
+
+- **Event-Driven Architecture**: Built on Jido's signal system
+- **Extensible Channel System**: Pluggable interfaces for different protocols
+- **Customizable Behaviors**: Override defaults with custom implementations
 
 ## Installation
 
@@ -43,149 +41,150 @@ Add `jido_chat` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:jido_chat, "~> 0.1.0"}
+    {:jido_chat, "~> 0.5.0"}
   ]
 end
 ```
 
-## Quick Start
+## Basic Usage
 
-### Creating a Channel
+### Creating a Room
 
 ```elixir
-# Start a new chat channel
-{:ok, channel} = JidoChat.create_channel("my-channel")
+# Start a basic chat room
+{:ok, pid} = Jido.Chat.create_room("project-bus", "main-room")
 
-# Or with custom settings
-{:ok, channel} = JidoChat.create_channel("ai-channel",
-  strategy: JidoChat.Channel.Strategy.RoundRobin,
-  message_limit: 100
-)
+# Access an existing room
+{:ok, pid} = Jido.Chat.get_room("project-bus", "main-room")
 ```
 
 ### Managing Participants
 
 ```elixir
-# Add a human participant
-human = %JidoChat.Participant{
-  id: "user123",
-  name: "Alice",
-  type: :human,
-  metadata: %{avatar_url: "https://example.com/avatar.jpg"}
-}
-:ok = JidoChat.join_channel(channel, human)
+# Create participants
+{:ok, human} = Jido.Chat.Participant.new("user123", :human,
+  display_name: "Alice")
 
-# Add an AI agent
-agent = %JidoChat.Participant{
-  id: "bot456",
-  name: "Helper Bot",
-  type: :agent,
-  metadata: %{capabilities: [:chat]}
-}
-:ok = JidoChat.join_channel(channel, agent)
+{:ok, agent} = Jido.Chat.Participant.new("agent456", :agent,
+  display_name: "Support Bot")
+
+# Add to room
+:ok = Jido.Chat.join_room("project-bus", "main-room", human)
+:ok = Jido.Chat.join_room("project-bus", "main-room", agent)
 ```
 
 ### Sending Messages
 
 ```elixir
-# Post a message
-{:ok, msg} = JidoChat.post_message(channel, "user123", "Hello, bot!")
+# Send a basic message
+{:ok, msg} = Jido.Chat.post_message("project-bus", "main-room",
+  "user123", "Hello @Support Bot!")
 
-# Handle the response
-case JidoChat.post_message(channel, "bot456", "Hello! How can I help?") do
-  {:ok, message} -> 
-    # Message sent successfully
-    process_message(message)
-  {:error, reason} -> 
-    # Handle error
-    Logger.error("Failed to send message: #{inspect(reason)}")
+# Send a rich message
+{:ok, msg} = Jido.Chat.post_message("project-bus", "main-room",
+  "agent456",
+  "Here's a chart",
+  type: :rich,
+  payload: %{
+    type: "chart",
+    data: [1, 2, 3]
+  }
+)
+```
+
+### Retrieving Messages
+
+```elixir
+# Get all messages
+{:ok, messages} = Jido.Chat.get_messages("project-bus", "main-room")
+
+# Get thread messages
+{:ok, thread} = Jido.Chat.get_thread("project-bus", "main-room", thread_id)
+```
+
+## Advanced Usage
+
+### Custom Room Implementation
+
+```elixir
+defmodule MyApp.CustomRoom do
+  use Jido.Chat.Room
+
+  @impl true
+  def handle_message(room, message) do
+    # Custom message handling logic
+    {:ok, message}
+  end
+
+  @impl true
+  def handle_join(room, participant) do
+    # Custom join logic
+    {:ok, participant}
+  end
 end
 ```
 
-### Getting Conversation Context
+### Custom Channel Integration
 
 ```elixir
-# Get recent messages in ChatML format
-{:ok, context} = JidoChat.get_conversation_context(channel,
-  limit: 10,
-  format: :chat_ml
-)
+defmodule MyApp.WebSocket.Channel do
+  @behaviour Jido.Chat.Channel
 
-# Format for Anthropic with system prompt
-{:ok, context} = JidoChat.get_conversation_context(channel,
-  system_prompt: "You are a helpful assistant",
-  format: :anthropic
-)
+  @impl true
+  def send_message(room_id, sender_id, content, opts) do
+    # Implement WebSocket message sending
+  end
+
+  @impl true
+  def handle_incoming(room_id, message) do
+    # Handle incoming WebSocket messages
+  end
+end
 ```
 
-## Configuration
+## Testing
 
-Configure JidoChat in your `config.exs`:
+The package includes a comprehensive test suite:
 
-```elixir
-config :jido_chat,
-  persistence: JidoChat.Channel.Persistence.ETS,
-  default_message_limit: 1000,
-  default_strategy: JidoChat.Channel.Strategy.FreeForm
+```bash
+# Run tests
+mix test
+
+# Run tests with coverage
+mix test --cover
+
+# Run full quality checks
+mix quality
 ```
 
-## Development Ideas
+## Supervision Tree
 
-### Core Improvements
-- [ ] Production-ready supervision tree
-- [ ] Dynamic channel supervision
-- [ ] Process restart handling
-- [ ] Message attachment support
+Jido.Chat uses a structured supervision tree for resilience:
 
-### Features
-- [ ] Channel discovery and management
-- [ ] Message threading support
-- [ ] Reaction system
-- [ ] Presence tracking
-- [ ] Channel archiving
-- [ ] Moderation tools
-
-### Platform Integration
-- [ ] Telegram adapter
-- [ ] Discord adapter
-- [ ] Slack adapter
-
-### Performance
-- [ ] Message batching
-- [ ] Efficient pagination
-- [ ] Caching layer (Nebulex)
-- [ ] Storage optimizations
-
-### Observability
-- [ ] Telemetry integration
-- [ ] Health check system
-- [ ] Monitoring dashboards
-
-### Security
-- [ ] Content validation
-- [ ] Rate limiting
-- [ ] Authentication system
-- [ ] Authorization rules
-- [ ] Input sanitization
-
-## Documentation
-
-- [Getting Started Guide](guides/getting_started.md)
-- [API Reference](https://hexdocs.pm/jido_chat)
-- [Architecture Overview](guides/architecture.md)
-- [Contributing Guide](CONTRIBUTING.md)
+```
+Jido.Chat.Application.Supervisor
+├── Registry
+└── Jido.Chat.Supervisor
+    ├── Room 1
+    ├── Room 2
+    └── Room N
+```
 
 ## Contributing
 
-We welcome contributions! Please feel free to submit a PR.
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+## Documentation
+
+- [HexDocs](https://hexdocs.pm/jido_chat) - API documentation
+- [Architecture Guide](guides/architecture.md) - System design
 
 ## License
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE.md](LICENSE.md) file for details.
-
-## Acknowledgments
-
-Special thanks to:
-- The Elixir community
-- Contributors and early adopters
-- Our open source dependencies
+This project is licensed under the Apache License 2.0 - see [LICENSE.md](LICENSE.md)

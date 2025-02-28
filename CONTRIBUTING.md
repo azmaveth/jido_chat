@@ -7,10 +7,12 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ### Development Environment
 
 1. **Elixir Version Requirements**
+
    - Jido requires Elixir ~> 1.17
    - We recommend using asdf or similar version manager
 
 2. **Initial Setup**
+
    ```bash
    # Clone the repository
    git clone https://github.com/agentjido/jido.git
@@ -24,6 +26,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
    ```
 
 3. **Quality Checks**
+
    ```bash
    # Run the full quality check suite
    mix quality
@@ -38,6 +41,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ## Code Organization
 
 ### Project Structure
+
 ```
 .
 ├── lib/
@@ -58,6 +62,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ```
 
 ### Core Components
+
 - **Actions**: Discrete, composable units of work
 - **Workflows**: Sequences of actions that accomplish larger goals
 - **Agents**: Stateful entities that can plan and execute workflows
@@ -68,12 +73,14 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ### Code Style
 
 1. **Formatting**
+
    - Run `mix format` before committing
    - Follow standard Elixir style guide
    - Use `snake_case` for functions and variables
    - Use `PascalCase` for module names
 
 2. **Documentation**
+
    - Add `@moduledoc` to every module
    - Document all public functions with `@doc`
    - Include examples when helpful
@@ -81,9 +88,10 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
    - Use doctests for simple examples
 
 3. **Type Specifications**
+
    ```elixir
    @type validation_error :: :invalid_name | :invalid_status
-   
+
    @spec process(String.t()) :: {:ok, term()} | {:error, validation_error()}
    def process(input) do
      # Implementation
@@ -93,15 +101,16 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ### Testing
 
 1. **Test Organization**
+
    ```elixir
    defmodule Jido.Test.Actions.FormatUserTest do
      use ExUnit.Case, async: true
-     
+
      describe "run/2" do
        test "formats user data correctly" do
          # Test implementation
        end
-       
+
        test "handles invalid input" do
          # Error case testing
        end
@@ -110,12 +119,14 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
    ```
 
 2. **Coverage Requirements**
+
    - Maintain high test coverage
    - Test both success and error paths
    - Include property-based tests for complex logic
    - Test async behavior where applicable
 
 3. **Running Tests**
+
    ```bash
    # Run full test suite
    mix test
@@ -130,6 +141,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ### Error Handling
 
 1. **Use With Patterns**
+
    ```elixir
    def complex_operation(input) do
      with {:ok, validated} <- validate(input),
@@ -149,6 +161,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ### Performance Considerations
 
 1. **Optimization**
+
    - Profile before optimizing
    - Document performance characteristics
    - Consider resource usage in distributed environments
@@ -162,12 +175,14 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ## Pull Request Process
 
 1. **Before Submitting**
+
    - Run the full quality check suite: `mix quality`
    - Ensure all tests pass
    - Update documentation if needed
    - Add tests for new functionality
 
 2. **PR Guidelines**
+
    - Create a feature branch from `main`
    - Use descriptive commit messages
    - Reference any related issues
@@ -182,6 +197,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ## Release Process
 
 1. **Version Numbers**
+
    - Follow semantic versioning
    - Update version in `mix.exs`
    - Update CHANGELOG.md
@@ -200,6 +216,7 @@ Welcome to the Jido Chat contributor's guide! We're excited that you're interest
 ## Questions or Problems?
 
 If you have questions about contributing:
+
 - Open a GitHub Discussion
 - Check existing issues
 - Review the guides directory

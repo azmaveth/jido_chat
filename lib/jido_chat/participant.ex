@@ -1,62 +1,73 @@
-defmodule JidoChat.Participant do
+defmodule Jido.Chat.Participant do
   @moduledoc """
-  Represents a participant in a chat channel with associated metadata and type information.
+  A simple struct representing an ephemeral participant.
 
-  This module defines the core participant data structure used throughout the chat system.
-  It supports both human users and AI agents as participants, with extensible metadata
-  for storing additional participant-specific information.
+  This module provides a basic data structure for participants that don't require
+  process state. For stateful participants, see `Jido.Chat.Participant.Stateful`.
+  """
+  use TypedStruct
 
-  ## Participant Types
+  typedstruct do
+    field(:id, String.t(), enforce: true)
+    field(:display_name, String.t())
+    field(:type, :human | :agent, enforce: true, default: :human)
+    field(:metadata, map(), default: %{})
+    # Process ID for direct message delivery
+    field(:pid, pid())
+    # Custom dispatch configuration for signal bus
+    field(:dispatch, term())
+  end
 
-  The following participant types are supported:
-  - `:human` - Human users participating in the chat
-  - `:agent` - AI agents or bots participating in the chat
+  @doc """
+  Creates a new participant struct.
 
-  ## Features
-
-  - Unique participant identification
-  - Type-based role assignment
-  - Custom name support
-  - Extensible metadata storage
-  - Type safety with comprehensive typespecs
+  ## Parameters
+    * id - Required. Unique identifier for the participant
+    * opts - Optional keyword list of options:
+      * :display_name - Optional display name (defaults to id)
+      * :type - Optional type (defaults to :human)
+      * :metadata - Optional map of metadata (defaults to empty map)
+      * :pid - Optional process ID for direct message delivery
+      * :dispatch - Optional custom dispatch configuration for signal bus
 
   ## Examples
 
-      # Create a human participant
-      %Participant{
-        id: "user123",
-        name: "John Doe",
-        type: :human,
-        metadata: %{avatar_url: "https://..."}
-      }
+      iex> alias Jido.Chat.Participant
+      iex> Participant.new("user123", display_name: "Alice")
+      {:ok, %Jido.Chat.Participant{id: "user123", display_name: "Alice", metadata: %{}}}
 
-      # Create an AI agent participant
-      %Participant{
-        id: "agent007",
-        name: "Assistant",
-        type: :agent,
-        metadata: %{capabilities: [:chat, :image_gen]}
-      }
+      iex> alias Jido.Chat.Participant
+      iex> Participant.new("user456", metadata: %{role: "admin"})
+      {:ok, %Jido.Chat.Participant{id: "user456", display_name: "user456", metadata: %{role: "admin"}}}
   """
+  @spec new(id :: String.t(), opts :: keyword()) :: {:ok, t()}
+  def new(id, opts \\ []) when is_binary(id) do
+    {:ok,
+     %__MODULE__{
+       id: id,
+       display_name: Keyword.get(opts, :display_name, id),
+       type: Keyword.get(opts, :type, :human),
+       metadata: Keyword.get(opts, :metadata, %{}),
+       pid: Keyword.get(opts, :pid),
+       dispatch: Keyword.get(opts, :dispatch)
+     }}
+  end
 
-  @typedoc """
-  The type of participant - either a human user or an AI agent.
+  @doc """
+  Same as `new/2` but returns the struct directly.
   """
-  @type participant_type :: :human | :agent
+  @spec new!(id :: String.t(), opts :: keyword()) :: t()
+  def new!(id, opts \\ []) when is_binary(id) do
+    case new(id, opts) do
+      {:ok, participant} -> participant
+    end
+  end
 
-  @typedoc """
-  A participant struct containing:
-  - `id`: Unique participant identifier
-  - `name`: Display name of the participant
-  - `type`: The participant type (see `t:participant_type/0`)
-  - `metadata`: Additional participant metadata like preferences, capabilities, etc
+  @doc """
+  Returns the display name for a participant.
+  If no display name is set, returns the participant's ID.
   """
-  @type t :: %__MODULE__{
-          id: String.t(),
-          name: String.t(),
-          type: participant_type(),
-          metadata: map()
-        }
-  @enforce_keys [:id, :name, :type]
-  defstruct [:id, :name, :type, metadata: %{}]
+  @spec display_name(t()) :: String.t()
+  def display_name(%__MODULE__{display_name: nil, id: id}), do: id
+  def display_name(%__MODULE__{display_name: name}), do: name
 end

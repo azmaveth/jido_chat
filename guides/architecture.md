@@ -2,25 +2,25 @@
 
 ## Overview
 
-JidoChat is a structured chat channel system that supports human and agent participants with customizable turn-taking strategies and persistence. The system is built on Elixir's OTP principles, utilizing GenServers, Supervisors, and PubSub for robust, fault-tolerant operation.
+JidoChat is a structured chat room system that supports human and agent participants with customizable turn-taking strategies and persistence. The system is built on Elixir's OTP principles, utilizing GenServers, Supervisors, and PubSub for robust, fault-tolerant operation.
 
 ## Core Features
 
-- Multiple persistence adapters (ETS, Agent-based memory store)
+- Multiple persistence adapters (ETS, In-Memory, Ecto)
 - Flexible turn-taking strategies
 - Support for human and AI agent participants
 - Message history management
 - Conversation context extraction for LLMs
 - Real-time message broadcasting
 - Participant management
-- Channel-based communication
+- Room-based communication
 
 ## System Architecture
 
 ### Core Components
 
-1. **Channel Management**
-   - Registry-based channel tracking
+1. **Room Management**
+   - Registry-based room tracking
    - Supervision tree for fault tolerance
    - State persistence across restarts
    - Message limit management
@@ -53,13 +53,13 @@ JidoChat is a structured chat channel system that supports human and agent parti
    - Message broadcasting
    - Topic-based subscriptions
    - Turn notification support
-   - Channel-wide communication
+   - Room-wide communication
 
 ## Data Structures
 
-### Channel
+### Room
 ```elixir
-%JidoChat.Channel{
+%Jido.Chat.Room{
   id: String.t(),
   name: String.t(),
   participants: [Participant.t()],
@@ -75,7 +75,7 @@ JidoChat is a structured chat channel system that supports human and agent parti
 
 ### Message
 ```elixir
-%JidoChat.Message{
+%Jido.Chat.Message{
   id: String.t(),
   content: String.t(),
   type: message_type(),
@@ -87,7 +87,7 @@ JidoChat is a structured chat channel system that supports human and agent parti
 
 ### Participant
 ```elixir
-%JidoChat.Participant{
+%Jido.Chat.Participant{
   id: String.t(),
   name: String.t(),
   type: :human | :agent,
@@ -97,7 +97,7 @@ JidoChat is a structured chat channel system that supports human and agent parti
 
 ### Conversation
 ```elixir
-%JidoChat.Conversation{
+%Jido.Chat.Conversation{
   messages: [formatted_message()],
   participants: [Participant.t()],
   metadata: map()
@@ -106,21 +106,21 @@ JidoChat is a structured chat channel system that supports human and agent parti
 
 ## Public API
 
-### Channel Creation and Management
+### Room Creation and Management
 ```elixir
-JidoChat.create_channel(channel_id, opts \\ [])
-JidoChat.join_channel(channel_pid, participant)
-JidoChat.post_message(channel_pid, participant_id, content)
-JidoChat.get_conversation_context(channel_pid, opts \\ [])
+Jido.Chat.create_room(room_id, opts \\ [])
+Jido.Chat.join_room(room_pid, participant)
+Jido.Chat.post_message(room_pid, participant_id, content)
+Jido.Chat.get_conversation_context(room_pid, opts \\ [])
 ```
 
-### Channel Behavior
+### Room Behavior
 ```elixir
-Channel.join(channel, participant)
-Channel.leave(channel, participant_id)
-Channel.post_message(channel, participant_id, content)
-Channel.get_messages(channel, opts \\ [])
-Channel.get_participants(channel)
+Room.join(room, participant)
+Room.leave(room, participant_id)
+Room.post_message(room, participant_id, content)
+Room.get_messages(room, opts \\ [])
+Room.get_participants(room)
 ```
 
 ### Message Broker Operations
@@ -157,7 +157,7 @@ MessageBroker.register_participant(pid, participant, topic)
    - Default persistence mechanism
    - Fast, in-memory storage
    - Survives process restarts
-   - Named table: `:jido_channels`
+   - Named table: `:jido_rooms`
 
 2. **Memory Adapter**
    - Agent-based storage
@@ -166,30 +166,30 @@ MessageBroker.register_participant(pid, participant, topic)
 
 ### Persistence Operations
 ```elixir
-Persistence.save(channel_id, channel_state)
-Persistence.load(channel_id)
-Persistence.delete(channel_id)
-Persistence.load_or_create(channel_id)
+Persistence.save(room_id, room_state)
+Persistence.load(room_id)
+Persistence.delete(room_id)
+Persistence.load_or_create(room_id)
 ```
 
 ## Application Configuration
 
 ### Supervisor Tree
-- Registry for channel management
+- Registry for room management
 - Persistence layer supervision
 - Phoenix.PubSub system
 - Global message broker
 
 ### Default Configuration
 - PubSub adapter: Phoenix.PubSub
-- Persistence adapter: JidoChat.Channel.Persistence.ETS
+- Persistence adapter: Jido.Chat.Room.Persistence.ETS
 - Default message limit: 1000
 - Default strategy: Strategy.FreeForm
 
 ## Testing Considerations
 
-1. **Channel Testing**
-   - Isolation via unique channel IDs
+1. **Room Testing**
+   - Isolation via unique room IDs
    - Strategy behavior verification
    - Message limit testing
    - Participant management testing

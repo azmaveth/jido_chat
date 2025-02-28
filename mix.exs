@@ -1,4 +1,4 @@
-defmodule JidoChat.MixProject do
+defmodule Jido.Chat.MixProject do
   use Mix.Project
 
   @version "0.5.0"
@@ -16,7 +16,7 @@ defmodule JidoChat.MixProject do
       # Docs
       name: "JidoChat",
       description:
-        "A structured chat channel system supporting human and agent participants with customizable turn-taking strategies.",
+        "A structured chat room system supporting human and agent participants with customizable turn-taking strategies.",
       source_url: "https://github.com/agentjido/jido_chat",
       homepage_url: "https://github.com/agentjido/jido_chat",
       package: package(),
@@ -39,7 +39,7 @@ defmodule JidoChat.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {JidoChat.Application, []}
+      mod: {Jido.Chat.Application, []}
     ]
   end
 
@@ -48,40 +48,39 @@ defmodule JidoChat.MixProject do
 
   defp docs do
     [
-      main: "getting-started",
+      main: "readme",
       source_ref: "v#{@version}",
       source_url: "https://github.com/agentjido/jido_chat",
       extra_section: "Guides",
       extras: [
         {"README.md", title: "Home"},
+        {"guides/getting-started.livemd", title: "Getting Started"},
         {"guides/architecture.md", title: "Architecture"},
-        {"guides/getting-started.md", title: "Getting Started"}
+        {"CONTRIBUTING.md", title: "Contributing"},
+        {"LICENSE.md", title: "License"},
+        {"CHANGELOG.md", title: "Changelog"}
       ],
       groups_for_modules: [
         Core: [
-          JidoChat,
-          JidoChat.Channel,
-          JidoChat.Message,
-          JidoChat.Conversation,
-          JidoChat.Participant
+          Jido.Chat,
+          Jido.Chat.Message,
+          Jido.Chat.Message.Parser,
+          Jido.Chat.Message.Parser.Mention,
+          Jido.Chat.Participant,
+          Jido.Chat.ParticipantRef
         ],
-        "Channel Management": [
-          JidoChat.Application
+        "Room Management": [
+          Jido.Chat.Application,
+          Jido.Chat.Room,
+          Jido.Chat.Room.State,
+          Jido.Chat.Room.Strategy,
+          Jido.Chat.Supervisor
         ],
-        "Turn-taking Strategies": [
-          JidoChat.Channel.Strategy,
-          JidoChat.Channel.Strategy.FreeForm,
-          JidoChat.Channel.Strategy.RoundRobin,
-          JidoChat.Channel.Strategy.PubSubRoundRobin
-        ],
-        Persistence: [
-          JidoChat.Channel.Persistence,
-          JidoChat.Channel.Persistence.ETS,
-          JidoChat.Channel.Persistence.Memory
-        ],
-        PubSub: [
-          JidoChat.PubSub.MessageBroker,
-          JidoChat.PubSub.MessageBroker.State
+        "Channel System": [
+          Jido.Chat.Channel,
+          Jido.Chat.Channels.IExChannel,
+          Jido.Chat.Channels.IExChannel.Server,
+          Jido.Chat.Channels.IExChannel.Server.State
         ]
       ],
       # Hide modules from the sidebar
@@ -89,6 +88,11 @@ defmodule JidoChat.MixProject do
         Guides: [
           "guides/getting-started",
           "guides/architecture"
+        ],
+        About: [
+          "CONTRIBUTING.md",
+          "LICENSE.md",
+          "CHANGELOG.md"
         ]
       ],
       sidebar_items: [
@@ -113,7 +117,9 @@ defmodule JidoChat.MixProject do
   defp deps do
     [
       {:jido, path: "../jido"},
-      {:phoenix_pubsub, "~> 2.1"},
+      {:jido_ai, path: "../jido_ai"},
+      {:nimble_parsec, "~> 1.4"},
+      {:typed_struct, "~> 0.3.0"},
 
       # Testing
       {:credo, "~> 1.7"},
@@ -121,6 +127,7 @@ defmodule JidoChat.MixProject do
       {:doctor, "~> 0.22.0", only: [:dev, :test]},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:excoveralls, "~> 0.18.3", only: [:dev, :test]},
+      {:expublish, "~> 2.5", only: [:dev], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:mimic, "~> 1.7", only: [:dev, :test]},
       {:stream_data, "~> 1.1", only: [:dev, :test]}
@@ -129,14 +136,17 @@ defmodule JidoChat.MixProject do
 
   defp aliases do
     [
-      test: "test --trace",
+      # test: "test --trace",
+      docs: "docs -f html --open",
       q: ["quality"],
       quality: [
         "format",
         "format --check-formatted",
         "compile --warnings-as-errors",
         "dialyzer --format dialyxir",
-        "credo --all"
+        "credo --all",
+        "doctor --short --raise",
+        "docs"
       ]
     ]
   end

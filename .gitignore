@@ -24,5 +24,8 @@ jido_chat-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+RELEASE.md
+PLAN.md
 
+# Elixir Language Server
 .elixir_ls/
