@@ -8,26 +8,25 @@ defmodule Jido.Chat.Message do
   use TypedStruct
 
   alias Jido.Chat.Message.Parser
-  alias Jido.Chat.ParticipantRef
 
   typedstruct enforce: [:type, :room_id, :sender, :content, :timestamp] do
-    field :id, String.t()
-    field :type, String.t()
-    field :room_id, String.t()
-    field :sender, String.t()
-    field :content, String.t()
-    field :timestamp, DateTime.t()
-    field :metadata, map(), default: %{}
+    field(:id, String.t())
+    field(:type, String.t())
+    field(:room_id, String.t())
+    field(:sender, String.t())
+    field(:content, String.t())
+    field(:timestamp, DateTime.t())
+    field(:metadata, map(), default: %{})
   end
 
   @doc """
   Represents the data field in a chat signal.
   """
   typedstruct module: ChatData, enforce: [:room_id, :sender, :content] do
-    field :room_id, String.t()
-    field :sender, String.t()
-    field :content, String.t()
-    field :metadata, map(), default: %{}
+    field(:room_id, String.t())
+    field(:sender, String.t())
+    field(:content, String.t())
+    field(:metadata, map(), default: %{})
   end
 
   # Define a hierarchical type system for chat messages
@@ -57,6 +56,9 @@ defmodule Jido.Chat.Message do
   Automatically generates an ID if one is not provided.
 
   Returns `{:ok, message}`.
+
+  Note: This function only creates the message struct. If you need to parse mentions
+  in a chat message, you should call `parse_message/1` after creating the message.
   """
   @spec new(map()) :: {:ok, t()}
   def new(attrs) do
@@ -74,19 +76,14 @@ defmodule Jido.Chat.Message do
       metadata: attrs[:metadata] || %{}
     }
 
-    # If this is a regular chat message, parse it for mentions
-    message =
-      if attrs.type == type(:message) do
-        parse_message(message)
-      else
-        message
-      end
-
     {:ok, message}
   end
 
   @doc """
   Parses a message for @mentions and updates the metadata.
+
+  This function should be called after creating a message with `new/1` if you need
+  to detect and process mentions in the message content.
 
   ## Parameters
 
@@ -95,7 +92,15 @@ defmodule Jido.Chat.Message do
   ## Returns
 
   - The updated message with participant references in metadata
+
+  ## Examples
+
+      iex> {:ok, message} = Message.new(%{type: "chat.message", room_id: "room1", sender: "user1", content: "Hello @alice!", timestamp: DateTime.utc_now()})
+      iex> message = Message.parse_message(message)
+      iex> message.metadata.participant_refs
+      ["alice"]
   """
+  @spec parse_message(t()) :: t()
   def parse_message(message) do
     # Parse the message content for @mentions
     case Parser.parse(message.content) do
@@ -335,10 +340,6 @@ defmodule Jido.Chat.Message do
 
   defp join_type(type) when is_list(type) do
     Enum.join(type, @config.separator)
-  end
-
-  defp generate_id do
-    Jido.Util.generate_id()
   end
 end
 

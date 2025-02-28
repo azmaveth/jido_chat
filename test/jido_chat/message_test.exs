@@ -44,8 +44,13 @@ defmodule Jido.Chat.MessageTest do
       assert message.content == "Hello, @alice and @bob!"
       assert message.timestamp == timestamp
       assert Map.get(message.metadata, :important) == true
+      # The metadata should not contain participant_refs yet
+      refute Map.has_key?(message.metadata, :participant_refs)
+
+      # Now parse the message for mentions
+      parsed_message = Message.parse_message(message)
       # The implementation adds participant_refs to metadata
-      assert is_list(Map.get(message.metadata, :participant_refs))
+      assert is_list(Map.get(parsed_message.metadata, :participant_refs))
     end
   end
 
@@ -150,9 +155,13 @@ defmodule Jido.Chat.MessageTest do
           timestamp: DateTime.utc_now()
         })
 
-      # The implementation should have added participant_refs to metadata
-      assert is_list(message.metadata.participant_refs)
-      assert length(message.metadata.participant_refs) == 2
+      # Initially, there should be no participant_refs
+      refute Map.has_key?(message.metadata, :participant_refs)
+
+      # After parsing, participant_refs should be added
+      parsed_message = Message.parse_message(message)
+      assert is_list(parsed_message.metadata.participant_refs)
+      assert length(parsed_message.metadata.participant_refs) == 2
     end
   end
 
@@ -256,6 +265,9 @@ defmodule Jido.Chat.MessageTest do
           content: "Hello @bob, how are you?",
           timestamp: DateTime.utc_now()
         })
+
+      # Parse the message for mentions
+      message = Message.parse_message(message)
 
       assert Jido.AI.Promptable.to_prompt(message) == "alice: Hello @bob, how are you?"
     end

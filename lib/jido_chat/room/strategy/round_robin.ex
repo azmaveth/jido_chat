@@ -12,11 +12,10 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
 
   @behaviour Jido.Chat.Room.Strategy
 
-  alias Jido.Chat.Message
-  alias Jido.Chat.Participant
   alias Jido.Chat.Room.Strategy
 
-  @default_turn_timeout 30_000 # 30 seconds
+  # 30 seconds
+  @default_turn_timeout 30_000
 
   @impl true
   def init(opts) do
@@ -63,12 +62,13 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
     state = update_agent_order(state)
 
     # If the current turn belongs to the removed participant, advance to the next turn
-    state = if state.current_turn == participant_id do
-      {state, _} = do_advance_turn(state, :participant_left)
-      state
-    else
-      state
-    end
+    state =
+      if state.current_turn == participant_id do
+        {state, _} = do_advance_turn(state, :participant_left)
+        state
+      else
+        state
+      end
 
     {:ok, state}
   end
@@ -132,16 +132,18 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
   # Update the agent order based on the current participants
   defp update_agent_order(state) do
     # Get all agent participants
-    agents = state.participants
-    |> Enum.filter(fn {_id, participant} -> participant.type == :agent end)
-    |> Enum.map(fn {id, _participant} -> id end)
-    |> Enum.sort_by(fn id ->
-      # Sort by the numeric suffix if it exists
-      case Regex.run(~r/user_agent(\d+)/, id) do
-        [_, num] -> String.to_integer(num)
-        _ -> 999  # Default high value for non-matching IDs
-      end
-    end)
+    agents =
+      state.participants
+      |> Enum.filter(fn {_id, participant} -> participant.type == :agent end)
+      |> Enum.map(fn {id, _participant} -> id end)
+      |> Enum.sort_by(fn id ->
+        # Sort by the numeric suffix if it exists
+        case Regex.run(~r/user_agent(\d+)/, id) do
+          [_, num] -> String.to_integer(num)
+          # Default high value for non-matching IDs
+          _ -> 999
+        end
+      end)
 
     %{state | agent_order: agents}
   end
@@ -169,10 +171,13 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
       agents ->
         current_index = Enum.find_index(agents, fn id -> id == state.current_turn end)
 
-        next_index = case current_index do
-          nil -> 0 # Start with the first agent
-          i -> rem(i + 1, length(agents)) # Move to the next agent, wrapping around
-        end
+        next_index =
+          case current_index do
+            # Start with the first agent
+            nil -> 0
+            # Move to the next agent, wrapping around
+            i -> rem(i + 1, length(agents))
+          end
 
         next_agent = Enum.at(agents, next_index)
         do_set_turn(state, next_agent)
@@ -214,11 +219,15 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
       nil ->
         # If not found, look for a participant with this display name
         participant = Enum.find(state.participants, fn {_id, p} -> p.display_name == sender end)
+
         case participant do
           {id, _} -> id
-          _ -> sender # Default to the sender if no match found
+          # Default to the sender if no match found
+          _ -> sender
         end
-      _ -> sender
+
+      _ ->
+        sender
     end
   end
 end

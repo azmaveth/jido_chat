@@ -13,7 +13,6 @@ defmodule Jido.Chat.Room do
   require Logger
 
   alias Jido.Chat.Message
-  alias Jido.Chat.Participant
   alias Jido.Chat.Room.Strategy
 
   @type t :: %__MODULE__{
@@ -136,15 +135,10 @@ defmodule Jido.Chat.Room do
     id = Keyword.get(opts, :id)
     name = Keyword.get(opts, :name, id)
     bus = Keyword.get(opts, :bus)
-    strategy = Keyword.get(opts, :strategy, Strategy.FreeForm)
+    strategy = Keyword.get(opts, :strategy, :free_form)
 
-    # Convert strategy atom to module if needed
-    strategy_module =
-      case strategy do
-        :free_form -> Strategy.FreeForm
-        :round_robin -> Strategy.RoundRobin
-        module when is_atom(module) -> module
-      end
+    # Get the strategy module
+    strategy_module = Strategy.get_strategy(strategy)
 
     # Create the initial state
     state = %__MODULE__{
@@ -267,6 +261,14 @@ defmodule Jido.Chat.Room do
 
     # Convert the signal to a message
     {:ok, message} = Message.from_signal(signal)
+
+    # Parse mentions if this is a chat message
+    message =
+      if message.type == Message.type(:message) do
+        Message.parse_message(message)
+      else
+        message
+      end
 
     # Only process messages intended for this room
     if message.room_id == state.id do

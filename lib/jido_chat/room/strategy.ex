@@ -14,27 +14,26 @@ defmodule Jido.Chat.Room.Strategy do
 
   ## Parameters
 
-  - `strategy` - Either an atom (:free_form, :round_robin) or a strategy struct
+  - `strategy` - An atom (:free_form, :round_robin) representing the strategy type
 
   ## Returns
 
-  - A strategy struct
-  """
-  def get_strategy(strategy) when is_atom(strategy) do
-    case strategy do
-      :round_robin ->
-        {:ok, strategy_state} = Jido.Chat.Room.Strategy.RoundRobin.init(%{room_id: "temp", participants: %{}})
-        Map.put(strategy_state, :__struct__, Jido.Chat.Room.Strategy.RoundRobin)
-      :free_form ->
-        {:ok, strategy_state} = Jido.Chat.Room.Strategy.FreeForm.init(%{room_id: "temp", participants: %{}})
-        Map.put(strategy_state, :__struct__, Jido.Chat.Room.Strategy.FreeForm)
-      _ ->
-        {:ok, strategy_state} = Jido.Chat.Room.Strategy.FreeForm.init(%{room_id: "temp", participants: %{}})
-        Map.put(strategy_state, :__struct__, Jido.Chat.Room.Strategy.FreeForm)
-    end
-  end
+  - The strategy module (not a struct)
 
-  def get_strategy(%{} = strategy), do: strategy
+  ## Examples
+
+      iex> Strategy.get_strategy(:free_form)
+      Jido.Chat.Room.Strategy.FreeForm
+
+      iex> Strategy.get_strategy(:round_robin)
+      Jido.Chat.Room.Strategy.RoundRobin
+
+      iex> Strategy.get_strategy(:unknown)
+      Jido.Chat.Room.Strategy.FreeForm
+  """
+  def get_strategy(:free_form), do: Jido.Chat.Room.Strategy.FreeForm
+  def get_strategy(:round_robin), do: Jido.Chat.Room.Strategy.RoundRobin
+  def get_strategy(_), do: Jido.Chat.Room.Strategy.FreeForm
 
   @doc """
   Adds a participant to the strategy state.
@@ -69,7 +68,9 @@ defmodule Jido.Chat.Room.Strategy do
   - `{updated_strategy, updated_participants}` - The updated strategy and participants
   """
   def remove_participant(strategy, participants, participant_id) do
-    {:ok, updated_strategy} = strategy.__struct__.handle_participant_removed(strategy, participant_id)
+    {:ok, updated_strategy} =
+      strategy.__struct__.handle_participant_removed(strategy, participant_id)
+
     updated_participants = Map.delete(participants, participant_id)
     {updated_strategy, updated_participants}
   end
@@ -126,16 +127,18 @@ defmodule Jido.Chat.Room.Strategy do
   - `{updated_strategy, notifications}` - The updated strategy and any notifications
   """
   def process_message(strategy, participants, message, room_id) do
-    {:ok, updated_strategy, notifications} = strategy.__struct__.advance_turn(strategy, :message_processed)
+    {:ok, updated_strategy, notifications} =
+      strategy.__struct__.advance_turn(strategy, :message_processed)
 
     # Convert notification participant IDs to actual notification messages
-    notification_messages = Enum.map(notifications, fn participant_id ->
-      case create_turn_notification(room_id, participant_id) do
-        {:ok, notification} -> notification
-        _ -> nil
-      end
-    end)
-    |> Enum.filter(&(&1 != nil))
+    notification_messages =
+      Enum.map(notifications, fn participant_id ->
+        case create_turn_notification(room_id, participant_id) do
+          {:ok, notification} -> notification
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(&(&1 != nil))
 
     {updated_strategy, notification_messages}
   end
@@ -154,7 +157,8 @@ defmodule Jido.Chat.Room.Strategy do
   """
   def create_turn_notification(room_id, participant_id) do
     # Ensure participant_id is a string
-    participant_id_str = if is_struct(participant_id), do: inspect(participant_id), else: to_string(participant_id)
+    participant_id_str =
+      if is_struct(participant_id), do: inspect(participant_id), else: to_string(participant_id)
 
     content = "It's #{participant_id_str}'s turn to speak"
 
@@ -199,7 +203,7 @@ defmodule Jido.Chat.Room.Strategy do
   - `{:ok, new_state}` - The updated strategy state
   """
   @callback handle_participant_added(state :: map(), participant :: Participant.t()) ::
-    {:ok, map()}
+              {:ok, map()}
 
   @doc """
   Handles a participant being removed from the room.
@@ -214,7 +218,7 @@ defmodule Jido.Chat.Room.Strategy do
   - `{:ok, new_state}` - The updated strategy state
   """
   @callback handle_participant_removed(state :: map(), participant_id :: String.t()) ::
-    {:ok, map()}
+              {:ok, map()}
 
   @doc """
   Checks if a message is allowed based on the strategy rules.
@@ -230,7 +234,7 @@ defmodule Jido.Chat.Room.Strategy do
   - `{:ok, allowed, new_state, notifications}` - With additional notifications
   """
   @callback is_message_allowed(state :: map(), message :: Message.t()) ::
-    {:ok, boolean(), map()} | {:ok, boolean(), map(), list()}
+              {:ok, boolean(), map()} | {:ok, boolean(), map(), list()}
 
   @doc """
   Advances the turn to the next participant.
@@ -245,5 +249,5 @@ defmodule Jido.Chat.Room.Strategy do
   - `{:ok, new_state, notifications}` - The updated state and any notifications
   """
   @callback advance_turn(state :: map(), reason :: atom()) ::
-    {:ok, map(), list()}
+              {:ok, map(), list()}
 end

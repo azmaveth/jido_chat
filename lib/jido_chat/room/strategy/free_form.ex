@@ -8,9 +8,6 @@ defmodule Jido.Chat.Room.Strategy.FreeForm do
 
   @behaviour Jido.Chat.Room.Strategy
 
-  alias Jido.Chat.Message
-  alias Jido.Chat.Participant
-
   @impl true
   def init(opts) do
     state = %{
@@ -39,7 +36,11 @@ defmodule Jido.Chat.Room.Strategy.FreeForm do
   def is_message_allowed(state, message) do
     # In free form strategy, all messages are allowed
     require Logger
-    Logger.debug("FreeForm strategy allowing message: #{inspect(message.type)} from #{message.sender} in room #{state.room_id}")
+
+    Logger.debug(
+      "FreeForm strategy allowing message: #{inspect(message.type)} from #{message.sender} in room #{state.room_id}"
+    )
+
     {:ok, true, state}
   end
 
