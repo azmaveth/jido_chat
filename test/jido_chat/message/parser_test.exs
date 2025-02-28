@@ -39,7 +39,8 @@ defmodule Jido.Chat.Message.ParserTest do
 
       {:ok, _parsed_content, mentions} = Parser.parse(content)
 
-      assert length(mentions) == 4  # All mentions are captured, including duplicates
+      # All mentions are captured, including duplicates
+      assert length(mentions) == 4
       assert Enum.count(mentions, &(&1 == "alice")) == 2
       assert Enum.count(mentions, &(&1 == "bob")) == 2
     end
@@ -53,6 +54,7 @@ defmodule Jido.Chat.Message.ParserTest do
   describe "parse_mentions/2" do
     test "creates mention structs with position information" do
       content = "Hello @alice and @bob!"
+
       participants = %{
         "user1" => "alice",
         "user2" => "bob"
@@ -75,6 +77,7 @@ defmodule Jido.Chat.Message.ParserTest do
 
     test "handles case insensitive matching" do
       content = "Hello @ALICE and @Bob!"
+
       participants = %{
         "user1" => "alice",
         "user2" => "bob"
@@ -93,6 +96,7 @@ defmodule Jido.Chat.Message.ParserTest do
 
     test "ignores mentions that don't match participants" do
       content = "Hello @alice, @bob, and @charlie!"
+
       participants = %{
         "user1" => "alice",
         "user2" => "bob"
@@ -108,6 +112,7 @@ defmodule Jido.Chat.Message.ParserTest do
 
     test "handles content with no mentions" do
       content = "Hello everyone! How are you all doing today?"
+
       participants = %{
         "user1" => "alice",
         "user2" => "bob"
@@ -120,6 +125,7 @@ defmodule Jido.Chat.Message.ParserTest do
 
     test "handles content with no matching mentions" do
       content = "Hello @charlie and @dave!"
+
       participants = %{
         "user1" => "alice",
         "user2" => "bob"

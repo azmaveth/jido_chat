@@ -49,7 +49,7 @@ defmodule Jido.Chat.Room.Supervisor do
   def list_rooms do
     DynamicSupervisor.which_children(__MODULE__)
     |> Enum.map(fn {_, pid, _, _} ->
-      Jido.Chat.Room.get_info(pid)
+      GenServer.call(pid, :get_info)
     end)
     |> Enum.reject(&is_nil/1)
   end

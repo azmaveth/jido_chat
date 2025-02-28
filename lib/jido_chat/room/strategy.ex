@@ -126,7 +126,7 @@ defmodule Jido.Chat.Room.Strategy do
 
   - `{updated_strategy, notifications}` - The updated strategy and any notifications
   """
-  def process_message(strategy, participants, message, room_id) do
+  def process_message(strategy, _participants, _message, room_id) do
     {:ok, updated_strategy, notifications} =
       strategy.__struct__.advance_turn(strategy, :message_processed)
 

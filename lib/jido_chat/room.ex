@@ -374,7 +374,7 @@ defmodule Jido.Chat.Room do
       {:ok, allowed, new_strategy_state} ->
         Logger.debug("Strategy returned allowed=#{allowed} without notifications")
         # If the message is allowed and it's a regular message, we might need to advance the turn
-        {notifications, new_strategy_state} =
+        {notifications, updated_strategy_state} =
           if allowed && message.type == Jido.Chat.Message.type(:message) do
             # Advance the turn if needed
             {:ok, updated_strategy_state, turn_notifications} =
@@ -389,7 +389,7 @@ defmodule Jido.Chat.Room do
             {[], new_strategy_state}
           end
 
-        {:ok, allowed, new_strategy_state, notifications}
+        {:ok, allowed, updated_strategy_state, notifications}
     end
   end
 end

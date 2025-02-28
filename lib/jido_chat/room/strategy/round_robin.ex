@@ -162,7 +162,7 @@ defmodule Jido.Chat.Room.Strategy.RoundRobin do
   end
 
   # Advance to the next agent's turn
-  defp do_advance_turn(state, reason) do
+  defp do_advance_turn(state, _reason) do
     case state.agent_order do
       [] ->
         # No agents, no turns to assign

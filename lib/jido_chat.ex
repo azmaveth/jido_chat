@@ -30,6 +30,7 @@ defmodule Jido.Chat do
 
     # Create and publish the message signal
     signal = Message.chat_message(room_id, sender, content, opts)
+
     case Jido.Signal.Bus.publish(bus, [signal]) do
       {:ok, _} -> :ok
       error -> error
@@ -47,6 +48,7 @@ defmodule Jido.Chat do
 
     # Create and publish the join signal
     signal = Message.join_room(room_id, username, opts)
+
     case Jido.Signal.Bus.publish(bus, [signal]) do
       {:ok, _} -> :ok
       error -> error
@@ -64,6 +66,7 @@ defmodule Jido.Chat do
 
     # Create and publish the leave signal
     signal = Message.leave_room(room_id, username, opts)
+
     case Jido.Signal.Bus.publish(bus, [signal]) do
       {:ok, _} -> :ok
       error -> error

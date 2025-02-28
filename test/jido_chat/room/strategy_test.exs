@@ -109,7 +109,7 @@ defmodule Jido.Chat.Room.StrategyTest do
       participants: participants,
       human: human
     } do
-      {updated_strategy, updated_participants} =
+      {_updated_strategy, updated_participants} =
         Strategy.remove_participant(strategy, participants, human.id)
 
       refute Map.has_key?(updated_participants, human.id)
